@@ -97,7 +97,11 @@ def main():
         if set_store(driver, store) == False:
             continue
 
-        WebDriverWait(driver, wait_time).until(EC.presence_of_element_located((By.CLASS_NAME, 'product-details-price')))
+        time.sleep(0.5)
+        try:
+            WebDriverWait(driver, wait_time).until(EC.presence_of_element_located((By.CLASS_NAME, 'product-details-price')))
+        except:
+            pass
 
         # Parse product info from selenium to beautifulsoup
         content = driver.page_source
