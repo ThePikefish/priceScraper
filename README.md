@@ -1,7 +1,8 @@
 # priceScraper
 
 Compares given product's prices in given K-Ruoka stores.
-Takes a link to a K-Ruoka product and short names of K-Ruoka stores as input.
+
+Takes a link to or a search term for a K-Ruoka product and short names of K-Ruoka stores as input.
 
 ### Requirements
 - beautifulsoup4

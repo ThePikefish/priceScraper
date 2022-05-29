@@ -11,6 +11,7 @@ from bs4 import BeautifulSoup
 
 import time
 
+wait_time = 5
 results = []
 
 print()
@@ -35,7 +36,7 @@ if "https" not in product_link:
     driver.get("https://www.k-ruoka.fi/kauppa/tuotehaku")
     product_search_input = driver.find_element(By.XPATH, ".//input[@type='search']")
     product_search_input.send_keys(product_link)
-    WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.CLASS_NAME, 'bundle-list-item'))).click()
+    WebDriverWait(driver, wait_time).until(EC.element_to_be_clickable((By.CLASS_NAME, 'bundle-list-item'))).click()
     product_link = driver.current_url
 
 driver.get(product_link)
@@ -65,30 +66,19 @@ for store in stores:
     store_search_input.send_keys(store)
     store_search_input.submit()
 
-    # Store search function
-    search = True
-    search_counter = 0
-    while search:
-        time.sleep(1)
-        search_counter = search_counter + 1
-        if search_counter > 3:
-            break
-        try:
-            store_list = driver.find_element(By.CLASS_NAME, 'store-list')
-            search = False
-
-            # Select the first store in store-list (first div)
-            store_element = store_list.find_element(By.TAG_NAME, 'div')
-            store_name = store_element.find_element(By.TAG_NAME, 'span').text
-            store_element.click()
-
-        except:
-            print("Haetaan uudelleen..")
-    if search_counter > 3:
+    # Search for the store
+    try:
+        time.sleep(0.5)
+        store_list = WebDriverWait(driver, wait_time).until(EC.presence_of_element_located((By.CLASS_NAME, 'store-list')))
+        store_element = store_list.find_element(By.TAG_NAME, 'div')
+        store_name = store_element.find_element(By.TAG_NAME, 'span').text
+        store_element.click()
+    except:
         print("Kauppaa ei löytynyt")
         print()
         driver.get(product_link)
         continue
+
 
     print(store_name + ':')
     time.sleep(1.5)
@@ -98,8 +88,9 @@ for store in stores:
     soup = BeautifulSoup(content, "html.parser")
 
     price_info = soup.find('div', class_='product-details-price')
+    # Try to find discount
     try:
-        # If discount, show original price
+        # Show original price
         price = price_info.find('div', class_='original-price')
         results.append(price.text) # Try should end here if no discount
         sale_price = price_info.find('span', class_='price')
@@ -124,9 +115,10 @@ for store in stores:
             print()
 
         print(price.text)
+    # If no discount
     except:
         try:
-            # If no discount, show price
+            # Show price
             price = price_info.find('span', class_='price')
             results.append(price.text)
 
@@ -135,7 +127,9 @@ for store in stores:
             # If no price, no product
             print("Tuotetta ei löytynyt")
             driver.get(product_link)
+            # TODO: Ask user if similar product should be searched
     try:
+        # Show price to weight ratio
         weight_price = price_info.find('div', class_='reference').text
         print(weight_price)
     except:
