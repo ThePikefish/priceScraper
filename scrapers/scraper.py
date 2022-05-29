@@ -44,19 +44,31 @@ for store in stores:
     store_search_input.submit()
 
     search = True
+    search_counter = 0
     while search:
         time.sleep(1)
-        store_list = driver.find_element(By.CLASS_NAME, 'store-list')
-        # Select the first store in store-list (first div)
-        store_element = store_list.find_element(By.TAG_NAME, 'div')
-        store_name = store_element.find_element(By.TAG_NAME, 'span').text
-        if (store_name):
+        search_counter = search_counter + 1
+        if search_counter >= 5:
+            break
+        try:
+            store_list = driver.find_element(By.CLASS_NAME, 'store-list')
             search = False
-        else:
-            print("Haetaan uudelleen")
+
+            # Select the first store in store-list (first div)
+            store_element = store_list.find_element(By.TAG_NAME, 'div')
+            store_name = store_element.find_element(By.TAG_NAME, 'span').text
+
+        except:
+            print("Haetaan uudelleen..")
+    if search_counter >= 5:
+        print("Kauppaa ei löytynyt")
+        print()
+        driver.get(product_link)
+        continue
+
     store_element.click()
 
-    driver.get("https://www.k-ruoka.fi/haku?q=pringles&tuote=pringles-sourcreamonion-200g-5053990138753")
+    driver.get(product_link)
     time.sleep(1)
 
     content = driver.page_source
@@ -80,10 +92,17 @@ for store in stores:
         except:
             # Jos ei kappalemäärää
             print("Discount: " + sale_price.text)
+        
+        print(price.text)
     except:
-        #Jos ei alennuksia, näytä hinta
-        price = price_info.find('span', class_='price')
-        results.append(price.text)
+        try:
+            #Jos ei alennuksia, näytä hinta
+            price = price_info.find('span', class_='price')
+            results.append(price.text)
 
-    print(price.text)
+            print(price.text)
+        except:
+            # Jos ei hintaa, tuotetta ei ole
+            print("Tuotetta ei ole")
+
     print()
