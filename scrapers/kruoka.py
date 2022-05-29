@@ -1,5 +1,7 @@
 import undetected_chromedriver as uc
 from selenium import webdriver
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from webdriver_manager.chrome import ChromeDriverManager
@@ -16,21 +18,28 @@ print("############### K-Ruoka ###############")
 print("########### Hintavertailija ###########")
 print()
 
-# Get product from user
-product_link = input("Anna tuotteen linkki: ")
-
 # Get stores from user
 stores = input("Anna haettavien kauppojen nimet: ")
-print()
 stores = stores.split(",")
 
-#driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
+# Get product from user
+product_link = input("Hae tuotetta tai anna sen linkki: ")
+print()
 
 # Use undetected chrome driver
+#driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
 driver = uc.Chrome(use_subprocess=True)
 
-# Open product link for driver
+if "https" not in product_link:
+    # Search product by name if no link given
+    driver.get("https://www.k-ruoka.fi/kauppa/tuotehaku")
+    product_search_input = driver.find_element(By.XPATH, ".//input[@type='search']")
+    product_search_input.send_keys(product_link)
+    WebDriverWait(driver, 20).until(EC.element_to_be_clickable((By.CLASS_NAME, 'bundle-list-item'))).click()
+    product_link = driver.current_url
+
 driver.get(product_link)
+
 
 # Find product name
 try:
@@ -125,6 +134,7 @@ for store in stores:
         except:
             # If no price, no product
             print("Tuotetta ei löytynyt")
+            driver.get(product_link)
     try:
         weight_price = price_info.find('div', class_='reference').text
         print(weight_price)
