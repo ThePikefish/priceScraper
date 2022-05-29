@@ -16,8 +16,10 @@ print("############### K-Ruoka ###############")
 print("########### Hintavertailija ###########")
 print()
 
+# Get product from user
 product_link = input("Anna tuotteen linkki: ")
 
+# Get stores from user
 stores = input("Anna haettavien kauppojen nimet: ")
 print()
 stores = stores.split(",")
@@ -27,14 +29,20 @@ stores = stores.split(",")
 # Use undetected chrome driver
 driver = uc.Chrome(use_subprocess=True)
 
+# Open product link for driver
 driver.get(product_link)
 
-product_name = driver.find_element(By.CLASS_NAME, 'product-details-info')
-product_name = product_name.find_element(By.TAG_NAME, 'span').text
-print("Tuote:")
-print(product_name)
-print()
+# Find product name
+try:
+    product_name = driver.find_element(By.CLASS_NAME, 'product-details-info')
+    product_name = product_name.find_element(By.TAG_NAME, 'span').text
+    print("Tuote:")
+    print(product_name)
+    print()
+except:
+    print("Tuotetta ei löytynyt")
 
+# Loop product in all selected stores
 for store in stores:
 
     switch_store_button = driver.find_element(By.CLASS_NAME, 'switch-icon')
@@ -48,6 +56,7 @@ for store in stores:
     store_search_input.send_keys(store)
     store_search_input.submit()
 
+    # Store search function
     search = True
     search_counter = 0
     while search:
@@ -72,35 +81,34 @@ for store in stores:
         driver.get(product_link)
         continue
 
-
+    print(store_name + ':')
     time.sleep(1.5)
 
+    # Parse product info from selenium to beautifulsoup
     content = driver.page_source
     soup = BeautifulSoup(content, "html.parser")
 
-    print(store_name + ':')
-
     price_info = soup.find('div', class_='product-details-price')
     try:
-        # Jos alennuksia, näytä alkuperäinen hinta
+        # If discount, show original price
         price = price_info.find('div', class_='original-price')
-        results.append(price.text) # Try loppuu tähän jos ei alennuksia
+        results.append(price.text) # Try should end here if no discount
         sale_price = price_info.find('span', class_='price')
 
         try:
-            # Jos alennuksessa kappalemäärä
+            # If discount has batch size
             batch_size = price_info.find('span', class_='batch-size').text
-            results.append(batch_size) # Try loppuu tähän jos ei kappalemäärää
+            results.append(batch_size) # Try should end here if no batch size
 
             print("Discount: " + sale_price.text + " /" + batch_size, end='')
         except:
-            # Jos ei kappalemäärää
+            # If no batch size
             print("Discount: " + sale_price.text, end='')
         
         try:
-            # Jos alennus vaatii plussa-kortin
+            # If discount requires plussa-card
             plussa = price_info.find('span', class_='plussa-discount-text').text
-            results.append(plussa) # Try loppuu tähän jos ei kappalemäärää
+            results.append(plussa) # Try should end here if no plussa-card is required
 
             print(" " + plussa)
         except:
@@ -109,13 +117,13 @@ for store in stores:
         print(price.text)
     except:
         try:
-            #Jos ei alennuksia, näytä hinta
+            # If no discount, show price
             price = price_info.find('span', class_='price')
             results.append(price.text)
 
             print(price.text)
         except:
-            # Jos ei hintaa, tuotetta ei ole
+            # If no price, no product
             print("Tuotetta ei löytynyt")
     try:
         weight_price = price_info.find('div', class_='reference').text
