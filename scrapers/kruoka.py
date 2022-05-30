@@ -9,6 +9,7 @@ from webdriver_manager.chrome import ChromeDriverManager
 from bs4 import BeautifulSoup
 #import pandas as pd
 
+import traceback
 import time
 
 wait_time = 5
@@ -39,6 +40,7 @@ def search_product(driver):
         WebDriverWait(driver, wait_time).until(EC.element_to_be_clickable((By.CLASS_NAME, 'bundle-list-item'))).click()
         product_link = driver.current_url
 
+
 # Select K-Ruoka store
 def set_store(driver, store):
     # Go to store selection
@@ -48,12 +50,13 @@ def set_store(driver, store):
     all_stores_button = driver.find_element(By.XPATH, "//*[text()='Kaikki']")
     all_stores_button.click()
 
+    # Search store
     store_selector = driver.find_element(By.CLASS_NAME, 'store-selector__search')
     store_search_input = store_selector.find_element(By.XPATH, ".//input[@type='text']")
     store_search_input.send_keys(store)
     store_search_input.submit()
 
-    # Search and select store
+    # Select store if found
     try:
         time.sleep(0.5)
         store_list = WebDriverWait(driver, wait_time).until(EC.presence_of_element_located((By.CLASS_NAME, 'store-list')))
@@ -66,6 +69,62 @@ def set_store(driver, store):
         print()
         driver.get(product_link)
         return False
+
+
+def scrape_product(driver):
+    # Parse product info from selenium to beautifulsoup
+    content = driver.page_source
+    soup = BeautifulSoup(content, "html.parser")
+
+    price_info = soup.find('div', class_='product-details-price')
+    # Try to find discount
+    try:
+        # Show original price
+        price = price_info.find('div', class_='original-price')
+        results.append(price.text) # Try should end here if no discount
+        sale_price = price_info.find('span', class_='price')
+
+        try:
+            # If discount has batch size
+            batch_size = price_info.find('span', class_='batch-size').text
+            results.append(batch_size) # Try should end here if no batch size
+
+            print("Discount: " + sale_price.text + " /" + batch_size, end='')
+        except:
+            # If no batch size
+            print("Discount: " + sale_price.text, end='')
+        
+        try:
+            # If discount requires plussa-card
+            plussa = price_info.find('span', class_='plussa-discount-text').text
+            results.append(plussa) # Try should end here if no plussa-card is required
+
+            print(" " + plussa)
+        except:
+            print()
+
+        print(price.text)
+    # If no discount
+    except:
+        try:
+            # Show price
+            price = price_info.find('span', class_='price')
+            results.append(price.text)
+
+            print(price.text)
+        except:
+            # If no price, no product
+            print("Tuotetta ei löytynyt")
+            driver.get(product_link)
+            # TODO: Ask user if similar product should be searched
+    try:
+        # Show price to weight ratio
+        weight_price = price_info.find('div', class_='reference').text
+        print(weight_price)
+    except:
+        pass
+
+    print()
 
 
 
@@ -94,67 +153,46 @@ def main():
     # Loop product in all selected stores
     for store in stores:
 
+        # Calls function to set the store. Incase of failure, skip store
         if set_store(driver, store) == False:
             continue
 
+        # Wait for prodcut
         time.sleep(0.5)
         try:
             WebDriverWait(driver, wait_time).until(EC.presence_of_element_located((By.CLASS_NAME, 'product-details-price')))
         except:
             pass
 
-        # Parse product info from selenium to beautifulsoup
-        content = driver.page_source
-        soup = BeautifulSoup(content, "html.parser")
+        # Find relevant information from product
+        scrape_product(driver)
 
-        price_info = soup.find('div', class_='product-details-price')
-        # Try to find discount
-        try:
-            # Show original price
-            price = price_info.find('div', class_='original-price')
-            results.append(price.text) # Try should end here if no discount
-            sale_price = price_info.find('span', class_='price')
-
+        # If * specified, loop product in all near stores aswell
+        if '*' in store:
+            store = store.replace('*','')
             try:
-                # If discount has batch size
-                batch_size = price_info.find('span', class_='batch-size').text
-                results.append(batch_size) # Try should end here if no batch size
+                # Find near stores
+                driver.find_element(By.XPATH, "//*[text()='Tuote muissa kaupoissa']").click()
+                near_stores_element = WebDriverWait(driver, wait_time).until(EC.presence_of_element_located((By.CLASS_NAME, 'product-availability-container')))
+                WebDriverWait(near_stores_element, wait_time).until(EC.element_to_be_clickable((By.TAG_NAME, 'a')))
 
-                print("Discount: " + sale_price.text + " /" + batch_size, end='')
-            except:
-                # If no batch size
-                print("Discount: " + sale_price.text, end='')
-            
-            try:
-                # If discount requires plussa-card
-                plussa = price_info.find('span', class_='plussa-discount-text').text
-                results.append(plussa) # Try should end here if no plussa-card is required
+                # Get links
+                near_stores = near_stores_element.find_elements(By.TAG_NAME, 'a')
+                near_store_links = []
+                near_store_names = []
+                for link in near_stores:
+                    near_store_links.append(link.get_attribute('href'))
+                    near_store_names.append(link.text)
 
-                print(" " + plussa)
-            except:
-                print()
+                # Loop all near stores
+                for link, store_name in zip(near_store_links, near_store_names):
+                    print(store_name + ':')
+                    driver.get(link)
+                    # Find relevant information from product
+                    scrape_product(driver)
 
-            print(price.text)
-        # If no discount
-        except:
-            try:
-                # Show price
-                price = price_info.find('span', class_='price')
-                results.append(price.text)
-
-                print(price.text)
-            except:
-                # If no price, no product
-                print("Tuotetta ei löytynyt")
-                driver.get(product_link)
-                # TODO: Ask user if similar product should be searched
-        try:
-            # Show price to weight ratio
-            weight_price = price_info.find('div', class_='reference').text
-            print(weight_price)
-        except:
-            pass
-
-        print()
+            except Exception:
+                traceback.print_exc()
+                print("Tuotetta ei voitu hakea kaupan " + store + " läheltä.")
 
 main()
