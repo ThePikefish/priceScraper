@@ -29,13 +29,27 @@ product_link = input("Hae tuotetta tai anna sen linkki: ")
 print()
 
 
+def accept_cookie(driver):
+    cookie_overlay = WebDriverWait(driver, 1).until(EC.presence_of_element_located((By.ID, 'kconsent')))
+    cookie_overlay.find_element(By.ID, 'kc-acceptAndHide').click()
+
+
 # Search and select product
 def search_product(driver):
     global product_link
     if "https" not in product_link:
         # Search product by name if no link given
         driver.get("https://www.k-ruoka.fi/kauppa/tuotehaku")
+        print("Driver navigated to URL")
+
+        try:
+            accept_cookie(driver)
+        except:
+            pass
+
         product_search_input = driver.find_element(By.XPATH, ".//input[@type='search']")
+        print("Searched item")
+        print()
         product_search_input.send_keys(product_link)
         WebDriverWait(driver, wait_time).until(EC.element_to_be_clickable((By.CLASS_NAME, 'bundle-list-item'))).click()
         product_link = driver.current_url
@@ -131,9 +145,13 @@ def scrape_product(driver):
 # Main program
 def main():
 
-    # Use undetected chrome driver
     #driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
-    driver = uc.Chrome(use_subprocess=True)
+    # Use undetected chrome driver, headless
+    options = uc.ChromeOptions()
+    #options.headless=True
+    #options.add_argument('--headless')
+    driver = uc.Chrome(use_subprocess=True, options=options)
+    print("Driver initialized")
 
     search_product(driver)
 
@@ -160,7 +178,7 @@ def main():
         # Wait for prodcut
         time.sleep(0.5)
         try:
-            WebDriverWait(driver, wait_time).until(EC.presence_of_element_located((By.CLASS_NAME, 'product-details-price')))
+            WebDriverWait(driver, 1).until(EC.presence_of_element_located((By.CLASS_NAME, 'product-details-price')))
         except:
             pass
 
