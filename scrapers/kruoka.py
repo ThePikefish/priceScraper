@@ -1,3 +1,4 @@
+from numpy import FPE_DIVIDEBYZERO
 import undetected_chromedriver as uc
 from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
@@ -11,6 +12,10 @@ from bs4 import BeautifulSoup
 
 import traceback
 import time
+import platform
+import glob
+import os
+
 
 wait_time = 5
 results = []
@@ -141,6 +146,17 @@ def scrape_product(driver):
     print()
 
 
+def try_local_driver():
+    if platform.system() == "Windows":
+        driver_path = os.path.abspath(os.path.expanduser("~/appdata/roaming/undetected_chromedriver"))
+        files = glob.glob(driver_path + '\*')
+        if files:
+            driver_exe = max(files, key=os.path.getctime) # Latest file
+            os.rename(driver_exe, driver_path + "\manual_chromedriver.exe")
+            return driver_path + "\manual_chromedriver.exe"
+    return None
+
+
 
 # Main program
 def main():
@@ -150,7 +166,10 @@ def main():
     options = uc.ChromeOptions()
     #options.headless=True
     #options.add_argument('--headless')
-    driver = uc.Chrome(use_subprocess=True, options=options)
+    options.Proxy = None
+
+    driver = uc.Chrome(use_subprocess=True, options=options, driver_executable_path=try_local_driver())
+    try_local_driver()
     print("Driver initialized")
 
     search_product(driver)
