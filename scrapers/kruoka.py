@@ -1,4 +1,3 @@
-from numpy import FPE_DIVIDEBYZERO
 import undetected_chromedriver as uc
 from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
@@ -15,6 +14,7 @@ import time
 import platform
 import glob
 import os
+import sys
 
 
 wait_time = 5
@@ -35,8 +35,12 @@ print()
 
 
 def accept_cookie(driver):
-    cookie_overlay = WebDriverWait(driver, 1).until(EC.presence_of_element_located((By.ID, 'kconsent')))
-    cookie_overlay.find_element(By.ID, 'kc-acceptAndHide').click()
+    try:
+        cookie_overlay = WebDriverWait(driver, 1).until(EC.presence_of_element_located((By.ID, 'kconsent')))
+        cookie_overlay.find_element(By.ID, 'kc-acceptAndHide').click()
+        print("Cookie accepted")
+    except:
+        pass
 
 
 # Search and select product
@@ -47,17 +51,14 @@ def search_product(driver):
         driver.get("https://www.k-ruoka.fi/kauppa/tuotehaku")
         print("Driver navigated to URL")
 
-        try:
-            accept_cookie(driver)
-        except:
-            pass
+        accept_cookie(driver)
 
         product_search_input = driver.find_element(By.XPATH, ".//input[@type='search']")
-        print("Searched item")
-        print()
         product_search_input.send_keys(product_link)
         WebDriverWait(driver, wait_time).until(EC.element_to_be_clickable((By.CLASS_NAME, 'bundle-list-item'))).click()
         product_link = driver.current_url
+        print("Searched item")
+        print()
 
 
 # Select K-Ruoka store
@@ -145,7 +146,8 @@ def scrape_product(driver):
 
     print()
 
-
+# Cache undetected_chromedriver so it doesn't need to be installed at every run
+# Solves slow launch times on windows after first load
 def try_local_driver():
     if platform.system() == "Windows":
         driver_path = os.path.abspath(os.path.expanduser("~/appdata/roaming/undetected_chromedriver"))
@@ -162,11 +164,13 @@ def try_local_driver():
 def main():
 
     #driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
-    # Use undetected chrome driver, headless
+    # Use undetected chrome driver
     options = uc.ChromeOptions()
-    #options.headless=True
-    #options.add_argument('--headless')
     options.Proxy = None
+    
+    if "--headless" in sys.argv:
+        options.headless=True
+        options.add_argument('--headless')
 
     driver = uc.Chrome(use_subprocess=True, options=options, driver_executable_path=try_local_driver())
     try_local_driver()
