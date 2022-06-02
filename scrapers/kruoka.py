@@ -4,9 +4,14 @@ from multiprocessing import Process
 import asyncio
 import multiprocessing as mp
 import threading
+import time
 
+TOKEN = None
+with open('token.txt') as f:
+    TOKEN = str(f.read())
+    f.close
 
-TOKEN = 'OTgxOTAxNzExNzk3MDEwNDgy.GAeSI_.ijT9fMizWaAyfMWsBILFRI-JgJFcmDs601Dxg8'
+#TOKEN = 'OTgxOTAxNzExNzk3MDEwNDgy.GAeSI_.ijT9fMizWaAyfMWsBILFRI-JgJFcmDs601Dxg8'
 
 client = discord.Client()
 client = commands.Bot(command_prefix='!')

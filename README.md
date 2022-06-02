@@ -13,7 +13,7 @@ Current version works as discord bot.
 
 ### Commands
 `!vertaile [product name] [store name]`
-Use `""` when adding spaces to arguments
+Use `""` when adding spaces to arguments.
 
 
 ### Requirements
