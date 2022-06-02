@@ -1,3 +1,49 @@
+import discord
+from discord.ext import commands
+from multiprocessing import Process
+import asyncio
+import multiprocessing as mp
+import threading
+
+
+TOKEN = 'OTgxOTAxNzExNzk3MDEwNDgy.GAeSI_.ijT9fMizWaAyfMWsBILFRI-JgJFcmDs601Dxg8'
+
+client = discord.Client()
+client = commands.Bot(command_prefix='!')
+
+global channel
+
+@client.event
+async def on_ready():
+    print("We have logged in as {0.user}".format(client))
+
+
+@client.event
+async def on_message(message):
+    global channel
+    username = str(message.author).split('#')[0]
+    user_message = str(message.content)
+    channel = message.channel
+    channel_msg = str(message.channel.name)
+
+    print(f"{username}: {user_message} ({channel})")
+
+    await client.process_commands(message)
+
+
+
+async def send_message(viesti):
+    global channel
+    #client.loop.create_task(channel.send(viesti))
+    viesti1 = '```' + '\n'.join(viesti) + '```'
+    await channel.send(viesti1)
+
+
+
+
+
+
+
 import undetected_chromedriver as uc
 from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
@@ -19,19 +65,30 @@ import sys
 
 wait_time = 5
 results = []
+product_link = None
+stores = None
+discord_message = []
 
-print()
-print("############### K-Ruoka ###############")
-print("########### Hintavertailija ###########")
-print()
+def get_input(stores=None, product=None):
+    global product_link
+    if (stores and product):
+        product_link = product
+        stores = stores.split(",")
+        return stores
+    else:
+        print()
+        print("############### K-Ruoka ###############")
+        print("########### Hintavertailija ###########")
+        print()
 
-# Get stores from user
-stores = input("Anna haettavien kauppojen nimet: ")
-stores = stores.split(",")
+        # Get stores from user
+        stores = input("Anna haettavien kauppojen nimet: ")
+        stores = stores.split(",")
 
-# Get product from user
-product_link = input("Hae tuotetta tai anna sen linkki: ")
-print()
+        # Get product from user
+        product_link = input("Hae tuotetta tai anna sen linkki: ")
+        print()
+        return stores
 
 
 def accept_cookie(driver):
@@ -84,14 +141,18 @@ def set_store(driver, store):
         store_name = store_element.find_element(By.TAG_NAME, 'span').text
         store_element.click()
         print(store_name + ':')
+        discord_message.append(store_name + ':')
     except:
         print("Kauppaa ei löytynyt")
         print()
+        discord_message.append("Kauppaa ei löytynyt")
+        global product_link
         driver.get(product_link)
         return False
 
 
-def scrape_product(driver):
+async def scrape_product(driver):
+    global discord_message
     # Parse product info from selenium to beautifulsoup
     content = driver.page_source
     soup = BeautifulSoup(content, "html.parser")
@@ -110,9 +171,11 @@ def scrape_product(driver):
             results.append(batch_size) # Try should end here if no batch size
 
             print("Discount: " + sale_price.text + " /" + batch_size, end='')
+            discord_message.append("Discount: " + sale_price.text + " /" + batch_size)
         except:
             # If no batch size
             print("Discount: " + sale_price.text, end='')
+            discord_message.append("Discount: " + sale_price.text)
         
         try:
             # If discount requires plussa-card
@@ -120,10 +183,12 @@ def scrape_product(driver):
             results.append(plussa) # Try should end here if no plussa-card is required
 
             print(" " + plussa)
+            discord_message.append(" " + plussa)
         except:
             print()
 
         print(price.text)
+        discord_message.append(price.text)
     # If no discount
     except:
         try:
@@ -132,19 +197,26 @@ def scrape_product(driver):
             results.append(price.text)
 
             print(price.text)
-        except:
+            discord_message.append(price.text)
+        except Exception:
+            traceback.print_exc()
             # If no price, no product
             print("Tuotetta ei löytynyt")
+            discord_message.append("Tuotetta ei löytynyt")
+            global product_link
             driver.get(product_link)
             # TODO: Ask user if similar product should be searched
     try:
         # Show price to weight ratio
         weight_price = price_info.find('div', class_='reference').text
         print(weight_price)
+        discord_message.append(weight_price)
     except:
         pass
 
     print()
+    await send_message(discord_message)
+    discord_message = []
 
 # Cache undetected_chromedriver so it doesn't need to be installed at every run
 # Solves slow launch times on windows after first load
@@ -161,14 +233,17 @@ def try_local_driver():
 
 
 # Main program
-def main():
+async def main_program(stores=None, product=None, headless=False):
+    global discord_message
+    global product_link
+    stores = get_input(stores, product)
 
     #driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
     # Use undetected chrome driver
     options = uc.ChromeOptions()
     options.Proxy = None
-    
-    if "--headless" in sys.argv:
+
+    if "--headless" in sys.argv or headless:
         options.headless=True
         options.add_argument('--headless')
 
@@ -188,14 +263,18 @@ def main():
         print("Tuote:")
         print(product_name)
         print()
+        await send_message(["Tuote:", product_name, ""])
+
     except:
         print("Tuotetta ei löytynyt")
+        await send_message(["Tuotetta ei löytynyt"])
 
     # Loop product in all selected stores
     for store in stores:
 
         # Calls function to set the store. Incase of failure, skip store
         if set_store(driver, store) == False:
+            await send_message(discord_message)
             continue
 
         # Wait for prodcut
@@ -206,7 +285,7 @@ def main():
             pass
 
         # Find relevant information from product
-        scrape_product(driver)
+        await scrape_product(driver)
 
         # If * specified, loop product in all near stores aswell
         if '*' in store:
@@ -228,12 +307,22 @@ def main():
                 # Loop all near stores
                 for link, store_name in zip(near_store_links, near_store_names):
                     print(store_name + ':')
+                    discord_message.append(store_name + ':')
                     driver.get(link)
                     # Find relevant information from product
-                    scrape_product(driver)
+                    await scrape_product(driver)
 
             except Exception:
                 traceback.print_exc()
                 print("Tuotetta ei voitu hakea kaupan " + store + " läheltä.")
+                await send_message(["Tuotetta ei voitu hakea kaupan " + store + " läheltä."])
 
-main()
+
+
+@client.command()
+async def vertaile(ctx, arg1, arg2):
+    await ctx.send("" + "**Haetaan " + arg2 + " kaupoista " + arg1 + "...**")
+
+    await main_program(stores=arg1, product=arg2, headless=True)
+
+client.run(TOKEN)
