@@ -15,6 +15,8 @@ Current version works as discord bot.
 `!vertaile [product name] [store name]`
 Use `""` when adding spaces to arguments.
 
+Connecting this script to a discord bot happens by adding `token.txt` with discord token to same direcotry as main script.
+
 
 ### Requirements
 - python3
