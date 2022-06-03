@@ -12,7 +12,7 @@ Usually does not work with VPN or on known server IPs because of undetected_chro
 Current version works as discord bot.
 
 ### Commands
-`!vertaile [product name] [store name]`
+`!vertaile [store name] [product name]`
 Use `""` when adding spaces to arguments.
 
 Connecting this script to a discord bot happens by adding `token.txt` with bot token to same directory as the main script.

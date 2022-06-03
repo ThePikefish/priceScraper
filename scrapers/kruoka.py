@@ -124,6 +124,7 @@ def search_product(driver):
 
 # Select K-Ruoka store
 def set_store(driver, store):
+    accept_cookie(driver)
     # Go to store selection
     switch_store_button = driver.find_element(By.CLASS_NAME, 'switch-icon')
     switch_store_button.click()
