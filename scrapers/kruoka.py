@@ -325,7 +325,7 @@ async def main_program(stores=None, product=None, headless=False):
 
 
 @client.command()
-async def vertaile(ctx, arg1, arg2):
+async def vertaa(ctx, arg1, arg2):
     await ctx.send("" + "**Haetaan " + arg2 + " kaupoista " + arg1 + "...**")
 
     await main_program(stores=arg1, product=arg2, headless=True)
